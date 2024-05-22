@@ -1,6 +1,5 @@
 from torch import nn
 from enum import Enum
-import torch.nn.functional as F
 from torchvision.models import (
     efficientnet_b0,
     efficientnet_b1,
@@ -12,18 +11,13 @@ from torchvision.models import (
     efficientnet_b7,
 )
 
+from src.models.model_utils import make_mlp_layers
+
 
 class MODEL_MODES(Enum):
     TRAINING = 1
     INFERENCE = 2
     FINE_TUNE = 3
-
-
-activations = {
-    "ReLU": nn.ReLU(),
-    "Sigmoid": nn.Sigmoid(),
-    "Tanh": nn.Tanh(),
-}
 
 
 def get_efficientnet(version="b0", pretrained=True):
@@ -41,24 +35,13 @@ def get_efficientnet(version="b0", pretrained=True):
     return efficientnet_versions[version](pretrained)
 
 
-def make_mlp(dims, activation="ReLU"):
-
-    layers = []
-
-    for idx, dim in enumerate(dims[:-1]):
-        layers.append(nn.Linear(dim, dims[idx + 1]))
-        layers.append(activations[activation])
-
-    return layers
-
-
 class EfficientNet(nn.Module):
     def __init__(
         self,
         efficient_net_v="b0",
         pretrained=True,
-        classifier_hidden_dims=[],
-        output_dim=1,
+        predictor_hidden_dims=[],
+        output_dim=4,
     ):
         super(EfficientNet, self).__init__()
         self.pretrained = pretrained
@@ -67,11 +50,11 @@ class EfficientNet(nn.Module):
         # EfficientNet
         self.efficient_net = get_efficientnet(efficient_net_v, pretrained)
 
-        # Modifying classifier
-        mlp_dims = [1000] + classifier_hidden_dims + [output_dim]
+        # Modifying regressor
+        mlp_dims = [1000] + predictor_hidden_dims + [output_dim]
         self.efficient_net.classifier = nn.Sequential(
             *self.efficient_net.classifier,  # Unpack the original classifier layers
-            *make_mlp(mlp_dims, "ReLU")[:-1]
+            *make_mlp_layers(dims=mlp_dims, activation="ReLU", last_layer_activation=False)
         )
 
     def forward(self, x):

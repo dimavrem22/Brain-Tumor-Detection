@@ -1,39 +1,22 @@
-import torch
+import torch.nn as nn
 from typing import Tuple, Optional
 from enum import auto, StrEnum
 
-from src.utils.config import TrainingConfig, Optimizer, LRScheduler
-from src.models.segmentation.unet import UNet
+activations = {
+    "ReLU": nn.ReLU(),
+    "Sigmoid": nn.Sigmoid(),
+    "Tanh": nn.Tanh(),
+}
 
-class SegmentationArchitecture(StrEnum):
-    UNET = auto()
+def make_mlp_layers(dims, activation="ReLU", last_layer_activation=False):
 
-def build_model_from_config(config: TrainingConfig) -> Tuple[torch.nn.Module, torch.optim.Optimizer, Optional[torch.optim.lr_scheduler.LRScheduler], torch.nn.Module]:
-    """
-    Build model, optimizer, lr scheduler, and loss function from the training configuration
+    layers = []
 
-    Args:
-    - config (TrainingConfig): the training configuration
+    for idx, dim in enumerate(dims[:-1]):
+        layers.append(nn.Linear(dim, dims[idx + 1]))
+        layers.append(activations[activation])
 
-    Returns:
-    - torch.nn.Module: the model to train,
-    """
-
-    if config.architecture == "unet":
-        model = UNet()
-    else:
-        raise ValueError(f"Invalid architecture: {config.architecture}")
+    if last_layer_activation:
+        return layers
     
-    optimizer = Optimizer.build(config.hyperparameters.optimizer, config, model)
-    lr_scheduler = LRScheduler.build(config.hyperparameters.scheduler, optimizer, config)
-
-    if config.hyperparameters.loss_fn == "BCEWithLogitsLoss":
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction="mean")
-    else:
-        raise ValueError(f"Invalid loss function: {config.hyperparameters.loss_fn}")
-
-    # NOTE (TODO): Add more optimizers and loss functions as needed
-    # NOTE (TODO): Add more model architectures as needed
-    # NOTE: add scheduler to adjust learning rate
-    
-    return model, optimizer, lr_scheduler, loss_fn
+    return layers[:-1]
