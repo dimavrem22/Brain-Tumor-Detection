@@ -372,17 +372,3 @@ class EfficientDet(nn.Module):
         anchor_adjustments = self.regressor(features[0])
 
         return class_preds, anchor_adjustments
-
-
-def save_checkpoint(model, file_path):
-    checkpoint = {
-        "model_state_dict": model.state_dict(),
-    }
-    torch.save(checkpoint, file_path)
-    print(f"Checkpoint saved to {file_path}")
-
-
-def load_checkpoint(model, file_path):
-    checkpoint = torch.load(file_path)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    print(f"Checkpoint loaded from {file_path}")

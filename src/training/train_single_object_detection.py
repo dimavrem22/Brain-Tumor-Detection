@@ -6,14 +6,13 @@ import pathlib
 from dataclasses import dataclass, field
 from src.models.object_detection.efficientdet import EfficientDet, save_checkpoint
 from src.utils.bbox import calculate_dataset_iou, generate_anchors
+from src.training.training_utils import get_device
 from src.utils.loss_functions import BBoxLoss
 from tqdm import tqdm
 import numpy as np
 import os
 import pprint as pp
 from sklearn.metrics import roc_auc_score
-
-torch.set_printoptions(precision=3, edgeitems=40, linewidth=120, sci_mode=False)
 
 from src.data.classification import DataSplit
 from src.utils.transforms import (
@@ -23,27 +22,7 @@ from src.utils.transforms import (
     BBoxResize,
 )
 
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-
 DATASET_BASE_DIR = pathlib.Path(__file__).parent.parent.parent / "datasets"
-
-
-def get_device():
-    """
-    Get the device to use for training (cuda if available, then mps, then cpu)
-    """
-    if torch.cuda.is_available():
-        print("Running on CUDA")
-        return torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        print("Running on MPS")
-        return torch.device("mps")
-    else:
-        print("Running on CPU")
-        return torch.device("cpu")
 
 
 @dataclass

@@ -76,6 +76,3 @@ class EfficientNet(nn.Module):
             for param in self.efficient_net.classifier.parameters():
                 param.requires_grad = True
 
-
-model = EfficientNet()
-print(model)
