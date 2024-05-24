@@ -235,7 +235,10 @@ def main():
         [
             BBoxBaseTransform(),
             BBoxResize((training_config.image_size, training_config.image_size)),
-            BBoxAnchorEncode(anchors=[], positive_iou_threshold=0, min_positive_iou=0)
+
+            # Currently used to convert COCO annotations to center annotation
+            # TODO: make separate transform for COCO annotations to center annotation
+            BBoxAnchorEncode(anchors=[], positive_iou_threshold=0, min_positive_iou=0),
         ]
     )
 
