@@ -59,6 +59,22 @@ class BBoxResize:
         return image, bbox
 
 
+class BBoxCocoToCenterNotation:
+
+    def __call__(self, image, bbox):
+
+        # [x_min, y_min, width, height] -> [x_center, y_center, width, height]
+        return image, [bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[2], bbox[3]]
+
+
+class BBoxCocoToCornerNotation:
+
+    def __call__(self, image, bbox):
+
+        # [x_min, y_min, width, height] -> [x_min, y_min, x_max, y_max]
+        return image, [bbox[0], bbox[1], bbox[0] + bbox[2],  bbox[1] + bbox[3]]
+
+
 class BBoxAnchorEncode:
 
     def __init__(self, anchors, positive_iou_threshold=0.5, min_positive_iou=0.3):

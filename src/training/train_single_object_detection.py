@@ -4,8 +4,8 @@ import torch
 from torch.utils.data import DataLoader
 import pathlib
 from dataclasses import dataclass, field
-from src.models.object_detection.efficientdet import EfficientDet, save_checkpoint
-from src.utils.bbox import calculate_dataset_iou, generate_anchors
+from src.models.model_utils import save_checkpoint
+from src.models.object_detection.efficientnet import EfficientNet
 from src.training.training_utils import get_device
 from src.utils.loss_functions import BBoxLoss
 from tqdm import tqdm
@@ -16,10 +16,10 @@ from sklearn.metrics import roc_auc_score
 
 from src.data.classification import DataSplit
 from src.utils.transforms import (
-    BBoxAnchorEncode,
     BBoxBaseTransform,
     BBoxCompose,
     BBoxResize,
+    BBoxAnchorEncode,
 )
 
 DATASET_BASE_DIR = pathlib.Path(__file__).parent.parent.parent / "datasets"
@@ -30,26 +30,14 @@ class TrainingConfig:
     batch_size: int = 16
     learning_rate: float = 0.001
     num_epochs: int = 5
-    device: torch.device = field(
-        default_factory=lambda: torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
-    )
+    device: torch.device = torch.device("cpu")
     dataset_root_dir: str = DATASET_BASE_DIR
     optimizer: str = "Adam"
-    anchor_aspect_ratios: List[float] = field(default_factory=lambda: [1.0])
-    anchor_scales: List[float] = field(default_factory=lambda: [0.1, 0.175, 0.25])
-    anchor_feature_map_sizes: List[int] = field(
-        default_factory=lambda: [32, 16, 8, 4, 2]
-    )
-    pretrained_backbone: bool = True
     image_size: int = 256
+    pretrained_backbone: bool = True
+    efficient_net_version: str = "b0"
+    predictor_hidden_dims: list = [64, 16]
     save_dir_path: str = None
-    clasification_loss: str = "weighted_bce"
-    clasification_loss_weight: int = 1
-    regression_loss: str = "smooth_l1"
-    regression_loss_weight: int = 1
-
 
 def main_train_loop(
     model: torch.nn.Module,
@@ -126,15 +114,16 @@ def train_step(
     cumalative_loss = 0
     optimizer.zero_grad()
 
-    for imgs, (labels, targets, bboxes) in train_dataloader:
+    for imgs, targets in train_dataloader:
 
         imgs, labels, targets = imgs.to(device), labels.to(device), targets.to(device)
         model.zero_grad()
-        y_hat_labels, y_hat_targets = model(imgs)
-        y_hat_labels = y_hat_labels.view(y_hat_labels.shape[0], -1)
+
+        # shape: [batch_size, 4]
+        y_hat_targets = model(imgs)
 
         optimizer.zero_grad()
-        loss = loss_fn(y_hat_labels, y_hat_targets, labels, targets)
+        loss = loss_fn(y_hat_targets, targets)
         loss.backward()
         optimizer.step()
 
@@ -207,12 +196,8 @@ def evaluate(
         predictions=adjustments,
         scores=scores,
     )
-    auc = roc_auc_score(
-        np.reshape(np.array(true_labels), -1), sigmoid(np.reshape(np.array(scores), -1))
-    )
 
     print("AVG IOU: ", avg_iou)
-    print("AUC: ", auc)
 
     return cumalative_loss / len(eval_dataloader), avg_iou
 
@@ -222,22 +207,17 @@ def main():
     # TRAINING CONFIGURATIONS:
     # NOTE: EDIT THE TrainingConfig below to run your experiment
     training_config = TrainingConfig(
-        batch_size=16,
-        learning_rate=0.01,
-        num_epochs=5,
-        device=get_device(),
-        dataset_root_dir=DATASET_BASE_DIR,
-        optimizer="SGD",
-        clasification_loss="weighted_bce",
-        clasification_loss_weight=1,
-        regression_loss="smooth_l1",
-        regression_loss_weight=0,  # freezing regression
-        anchor_aspect_ratios=[1],
-        anchor_scales=[0.1, 0.175, 0.25, 0.5, 0.35],
-        anchor_feature_map_sizes=[32],
-        pretrained_backbone=True,
-        image_size=256,
-        save_dir_path=None,
+        batch_size = 16,
+        learning_rate = 0.001. 
+        num_epochs = 10,
+        device = get_device(),
+        dataset_root_dir = DATASET_BASE_DIR,
+        optimizer = "Adam", 
+        image_size = 256, 
+        pretrained_backbone = True, 
+        efficient_net_version = "b0",
+        predictor_hidden_dims = [64, 16],
+        save_dir_path =  None,
     )
 
     if training_config.save_dir_path is not None and not os.path.exists(
@@ -250,22 +230,12 @@ def main():
 
     device = training_config.device
 
-    # Defining Anchors
-    anchors_centers, anchors_corners = generate_anchors(
-        training_config.image_size,
-        scales=training_config.anchor_scales,
-        aspect_ratios=training_config.anchor_aspect_ratios,
-        feature_map_sizes=training_config.anchor_feature_map_sizes,
-    )
-
     # input transforms
     transform = BBoxCompose(
         [
             BBoxBaseTransform(),
             BBoxResize((training_config.image_size, training_config.image_size)),
-            BBoxAnchorEncode(
-                anchors_centers, positive_iou_threshold=0.5, min_positive_iou=0.3
-            ),
+            BBoxAnchorEncode(anchors=[], positive_iou_threshold=0, min_positive_iou=0)
         ]
     )
 
@@ -286,22 +256,15 @@ def main():
     )
 
     # initializing model
-    model = EfficientDet(
-        pretrained_backbone=training_config.pretrained_backbone,
-        n_classes=1,
-        n_anchors=len(training_config.anchor_aspect_ratios)
-        * len(training_config.anchor_scales),
-        bifpn_layers=3,
-        n_channels=64,
+    model = EfficientNet(
+        efficient_net_v=training_config.efficient_net_version,
+        pretrained=training_config.pretrained_backbone,
+        predictor_hidden_dims=training_config.predictor_hidden_dims,
+        output_dim=4
     )
 
     # initializing loss function
-    loss = BBoxLoss(
-        class_loss=training_config.clasification_loss,
-        class_loss_weight=training_config.clasification_loss_weight,
-        reg_loss=training_config.regression_loss,
-        reg_loss_weight=training_config.regression_loss_weight,
-    )
+    loss = torch.nn.MSELoss()
 
     # initializing optimizer
     if training_config.optimizer == "SGD":
@@ -325,7 +288,6 @@ def main():
         optimizer=optimizer,
         loss_fn=loss,
         device=device,
-        anchors=anchors_centers,
         n_epochs=training_config.num_epochs,
         configs=training_config,
     )
