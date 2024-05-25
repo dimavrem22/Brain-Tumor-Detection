@@ -1,4 +1,5 @@
 model_registry/
+experiments/
 datasets/
 wandb/
 logs/

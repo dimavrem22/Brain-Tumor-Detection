@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import pathlib
 from dataclasses import dataclass, field
 from src.models.object_detection.efficientdet import EfficientDet, save_checkpoint
-from src.utils.bbox import calculate_dataset_iou, generate_anchors
+from src.utils.bbox import calculate_anchor_based_dataset_iou, generate_anchors
 from src.utils.loss_functions import BBoxLoss
 from src.training.training_utils import get_device
 from tqdm import tqdm
@@ -202,7 +202,7 @@ def evaluate(
             true_labels += labels.to("cpu").tolist()
 
     # calculating metrics (IoU and AUC)
-    avg_iou = calculate_dataset_iou(
+    avg_iou = calculate_anchor_based_dataset_iou(
         bboxes=bboxes,
         predictions=adjustments,
         scores=scores,

@@ -118,7 +118,7 @@ def non_maximum_supression(preds, bbox_centers, threshold, min_prob):
     return selected_indices
 
 
-def calculate_dataset_iou(bboxes, predictions, scores):
+def calculate_anchor_based_dataset_iou(bboxes, predictions, scores):
     """
     Calculates the average IoU for the list of samples between most confident prediction and ground truth.
 
@@ -149,3 +149,56 @@ def calculate_dataset_iou(bboxes, predictions, scores):
         ious.append(iou)
 
     return np.mean(ious)
+
+
+def calculate_single_bbox_iou_values(true_bboxes, pred_bboxes, bbox_format="center"):
+
+    iou_values = []
+
+    for true_bbox, pred_bbox in zip(true_bboxes, pred_bboxes):
+
+        if bbox_format == "center":
+            true_bbox = convert_to_corners(true_bbox)
+            pred_bbox = convert_to_corners(pred_bbox)
+
+        # Determine the coordinates of the intersection rectangle
+        x_left = max(true_bbox[0], pred_bbox[0])
+        y_top = max(true_bbox[1], pred_bbox[1])
+        x_right = min(true_bbox[2], pred_bbox[2])
+        y_bottom = min(true_bbox[3], pred_bbox[3])
+
+        # Check if there is an intersection
+        if x_right < x_left or y_bottom < y_top:
+            iou_values.append(0)
+            continue
+
+        # Calculate the area of the intersection rectangle
+        intersection_area = (x_right - x_left) * (y_bottom - y_top)
+
+        # Calculate the area of both bounding boxes
+        true_bbox_area = (true_bbox[2] - true_bbox[0]) * (true_bbox[3] - true_bbox[1])
+        pred_bbox_area = (pred_bbox[2] - pred_bbox[0]) * (pred_bbox[3] - pred_bbox[1])
+
+        # Calculate the union area
+        union_area = true_bbox_area + pred_bbox_area - intersection_area
+
+        # Calculate the IoU
+        iou = intersection_area / union_area
+
+        iou_values.append(iou)
+
+    return iou_values
+
+
+def convert_to_corners(center_bbox):
+
+    center_x = center_bbox[0]
+    center_y = center_bbox[1]
+    width = center_bbox[2]
+    height = center_bbox[3]
+
+    x1 = center_x - width / 2
+    y1 = center_y - height / 2
+    x2 = center_x + width / 2
+    y2 = center_y + height / 2
+    return [x1, y1, x2, y2]

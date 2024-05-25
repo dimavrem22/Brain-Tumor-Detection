@@ -1,4 +1,3 @@
-from typing import List
 from src.data.bbox import BoundingBoxDetectionDataset
 import torch
 from torch.utils.data import DataLoader
@@ -7,19 +6,18 @@ from dataclasses import dataclass, field
 from src.models.model_utils import save_checkpoint
 from src.models.object_detection.efficientnet import EfficientNet
 from src.training.training_utils import get_device
-from src.utils.loss_functions import BBoxLoss
+from src.utils.bbox import calculate_single_bbox_iou_values
 from tqdm import tqdm
 import numpy as np
 import os
 import pprint as pp
-from sklearn.metrics import roc_auc_score
 
 from src.data.classification import DataSplit
 from src.utils.transforms import (
     BBoxBaseTransform,
     BBoxCompose,
     BBoxResize,
-    BBoxAnchorEncode,
+    BBoxCocoToCenterFormat,
 )
 
 DATASET_BASE_DIR = pathlib.Path(__file__).parent.parent.parent / "datasets"
@@ -36,7 +34,7 @@ class TrainingConfig:
     image_size: int = 256
     pretrained_backbone: bool = True
     efficient_net_version: str = "b0"
-    predictor_hidden_dims: list = [64, 16]
+    predictor_hidden_dims: list = field(default_factory=lambda:[])
     save_dir_path: str = None
 
 def main_train_loop(
@@ -44,7 +42,6 @@ def main_train_loop(
     train_dataloader: DataLoader,
     val_dataloader: DataLoader,
     optimizer: torch.optim.Optimizer,
-    anchors: List[np.array],
     loss_fn: torch.nn.Module,
     device: torch.device,
     n_epochs: int,
@@ -73,9 +70,7 @@ def main_train_loop(
             )
 
             # evaluating performance on validation set
-            val_loss, val_iou = evaluate(
-                model, val_dataloader, loss_fn, device, anchors, pbar
-            )
+            val_loss, val_iou = evaluate(model, val_dataloader, loss_fn, device, pbar)
 
             # keeping track of metrics
             tr_log["tr_loss"].append(float(train_loss))
@@ -114,21 +109,27 @@ def train_step(
     cumalative_loss = 0
     optimizer.zero_grad()
 
-    for imgs, targets in train_dataloader:
+    for imgs_batch, targets_batch in train_dataloader:
+        
+        # formatting targets and inputs
+        imgs_batch = imgs_batch.type(torch.float32).to(device)
+        targets_batch = targets_batch.type(torch.float32).to(device)
 
-        imgs, labels, targets = imgs.to(device), labels.to(device), targets.to(device)
+        # resetting gradients
+        # TODO: CHECK THAT THIS IS LEGIT ????
         model.zero_grad()
 
-        # shape: [batch_size, 4]
-        y_hat_targets = model(imgs)
+        # forward pass
+        pred_targets_batch = model(imgs_batch)
 
+        # updating model and tracking loss
         optimizer.zero_grad()
-        loss = loss_fn(y_hat_targets, targets)
+        loss = loss_fn(targets_batch, pred_targets_batch)
         loss.backward()
         optimizer.step()
-
         cumalative_loss += loss.item()
-
+        
+        # updating progress bar
         pbar.set_postfix({"Loss": f"{loss.item():.4f}", "Phase": "Train"})
         pbar.update()
 
@@ -140,63 +141,42 @@ def evaluate(
     eval_dataloader: DataLoader,
     loss_fn: torch.nn.Module,
     device: torch.device,
-    anchors: torch.tensor,
     pbar: tqdm,
-    use_regression_output=False,
 ):
     """
     Evaluate model performance on evaluation data.
     """
-
-    scores = []
-    true_labels = []
-    adjustments = []
-    bboxes = []
+    true_targets = []
+    predicted_targets = []
 
     model.eval()
     with torch.no_grad():
         cumalative_loss = 0
-        for imgs, (labels, targets, true_bboxes) in eval_dataloader:
-            imgs, labels, targets = (
-                imgs.to(device),
-                labels.to(device),
-                targets.to(device),
-            )
-            y_hat_labels_batch, y_hat_targets_batch = model(imgs)
-            y_hat_labels_batch = y_hat_labels_batch.view(
-                y_hat_labels_batch.shape[0], -1
-            )
-            loss = loss_fn(y_hat_labels_batch, y_hat_targets_batch, labels, targets)
+        for imgs_batch, targets_batch in eval_dataloader:
+
+            # formatting inputs and targets
+            imgs_batch = imgs_batch.type(torch.float32).to(device)
+            targets_batch = targets_batch.type(torch.float32).to(device)
+
+            # model prediction
+            pred_targets_batch = model(imgs_batch)
+
+            # calculating batch loss adding to cumulative
+            loss = loss_fn(targets_batch, pred_targets_batch)
             cumalative_loss += loss.item()
 
+            # updating progress bar
             pbar.set_postfix({"Loss": f"{loss.item():.4f}", "Phase": "Evaluate"})
             pbar.update()
 
-            # keeping track of predictions
-            bboxes += true_bboxes.to("cpu").tolist()
+            # keeping track of predictions and targets
+            true_targets += targets_batch.to("cpu").tolist()
+            predicted_targets += pred_targets_batch.to("cpu").tolist()
 
-            # using regression outputs to get final bbox prediction
-            if use_regression_output:
-                adjustments += (
-                    np.repeat(np.expand_dims(anchors, axis=0), repeats=4, axis=0)
-                ).tolist()
-
-            # anchor is final bbox prediction (used while regressor is not bing trained)
-            else:
-                adjustments += (
-                    torch.zeros(y_hat_targets_batch.shape) + anchors
-                ).tolist()
-
-            scores += y_hat_labels_batch.to("cpu").tolist()
-            true_labels += labels.to("cpu").tolist()
-
-    # calculating metrics (IoU and AUC)
-    avg_iou = calculate_dataset_iou(
-        bboxes=bboxes,
-        predictions=adjustments,
-        scores=scores,
-    )
-
+    # calculating IoU
+    iou_values = calculate_single_bbox_iou_values(true_bboxes=true_targets, pred_bboxes=predicted_targets)
+    avg_iou = np.mean(iou_values)
+    
     print("AVG IOU: ", avg_iou)
 
     return cumalative_loss / len(eval_dataloader), avg_iou
@@ -205,10 +185,10 @@ def evaluate(
 def main():
 
     # TRAINING CONFIGURATIONS:
-    # NOTE: EDIT THE TrainingConfig below to run your experiment
+    # NOTE: Edit the TrainingConfig below to run your experiment
     training_config = TrainingConfig(
         batch_size = 16,
-        learning_rate = 0.001. 
+        learning_rate = 0.001,
         num_epochs = 10,
         device = get_device(),
         dataset_root_dir = DATASET_BASE_DIR,
@@ -235,10 +215,7 @@ def main():
         [
             BBoxBaseTransform(),
             BBoxResize((training_config.image_size, training_config.image_size)),
-
-            # Currently used to convert COCO annotations to center annotation
-            # TODO: make separate transform for COCO annotations to center annotation
-            BBoxAnchorEncode(anchors=[], positive_iou_threshold=0, min_positive_iou=0),
+            BBoxCocoToCenterFormat(),
         ]
     )
 
