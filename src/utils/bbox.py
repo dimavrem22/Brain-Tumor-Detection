@@ -1,3 +1,4 @@
+import math
 import torch
 import numpy as np
 from torchvision.ops import box_iou
@@ -202,3 +203,23 @@ def convert_to_corners(center_bbox):
     x2 = center_x + width / 2
     y2 = center_y + height / 2
     return [x1, y1, x2, y2]
+
+
+def rotate_point(x, y, x_c, y_c, angle_degrees):
+
+    # Convert angle from degrees to radians
+    angle_radians = math.radians(angle_degrees)
+
+    # Step 1: Translate point to the origin
+    px_prime = x - x_c
+    py_prime = y - y_c
+
+    # Step 2: Rotate point
+    px_double_prime = px_prime * math.cos(angle_radians) - py_prime * math.sin(angle_radians)
+    py_double_prime = px_prime * math.sin(angle_radians) + py_prime * math.cos(angle_radians)
+
+    # Step 3: Translate point back
+    xn = px_double_prime + x_c
+    yn = py_double_prime + y_c
+
+    return xn, yn

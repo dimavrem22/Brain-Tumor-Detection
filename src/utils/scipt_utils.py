@@ -32,4 +32,4 @@ def save_configs_dict(configs_dict, save_path, add_git_commit_id=True):
         
     
     with open(save_path, "w") as f:
-        json.dump(configs_dict_copy, f)
+        json.dump(configs_dict_copy, f, indent=4)

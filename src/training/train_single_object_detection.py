@@ -20,6 +20,7 @@ from src.utils.transforms import (
     BBoxCompose,
     BBoxResize,
     BBoxCocoToCenterFormat,
+    DATA_AUGMENTATION_MAP
 )
 from src.utils.scipt_utils import save_configs_dict
 from src.utils.visualize import plot_sample_model_prediction
@@ -38,6 +39,7 @@ class TrainingConfig:
     num_epochs: int = 5
     device: torch.device = torch.device("cpu")
     dataset_root_dir: str = DATASET_BASE_DIR
+    augmentations: list = field(default_factory=lambda:[])
     optimizer: str = "Adam"
     image_size: int = 256
     pretrained_backbone: bool = True
@@ -239,9 +241,10 @@ def main():
     training_config = TrainingConfig(
         batch_size = 16,
         learning_rate = 0.001,
-        num_epochs = 1,
+        num_epochs = 100,
         device = get_device(),
         dataset_root_dir = DATASET_BASE_DIR,
+        augmentations=['rotation'],
         optimizer = "Adam", 
         image_size = 256, 
         pretrained_backbone = True, 
@@ -259,8 +262,19 @@ def main():
 
     device = training_config.device
 
+    # Data augmentaion only applied to the training set
+    augmentation_transforms = [DATA_AUGMENTATION_MAP[a] for a in training_config.augmentations]
+
     # input transforms
-    transform = BBoxCompose(
+    train_transform = BBoxCompose(
+        [
+            BBoxBaseTransform(),
+            BBoxResize((training_config.image_size, training_config.image_size)),
+            BBoxCocoToCenterFormat(),
+            *augmentation_transforms,
+        ]
+    )
+    eval_transform = BBoxCompose(
         [
             BBoxBaseTransform(),
             BBoxResize((training_config.image_size, training_config.image_size)),
@@ -268,15 +282,16 @@ def main():
         ]
     )
 
+
     # initializing datasets
     tr_dataset = BoundingBoxDetectionDataset(
-        root_dir=DATASET_BASE_DIR, split=DataSplit.TRAIN, transform=transform
+        root_dir=DATASET_BASE_DIR, split=DataSplit.TRAIN, transform=train_transform
     )
     val_dataset = BoundingBoxDetectionDataset(
-        root_dir=DATASET_BASE_DIR, split=DataSplit.VALIDATION, transform=transform
+        root_dir=DATASET_BASE_DIR, split=DataSplit.VALIDATION, transform=eval_transform
     )
     test_dataset = BoundingBoxDetectionDataset(
-        root_dir=DATASET_BASE_DIR, split=DataSplit.TEST, transform=transform
+        root_dir=DATASET_BASE_DIR, split=DataSplit.TEST, transform=eval_transform
     )
 
     # initializing data loaders
@@ -331,7 +346,7 @@ def main():
     # saving experiment logs
     pp.pprint(experiment_log.__dict__)
     with open(training_config.save_dir_path / "experiment_log.json", "w") as f:
-        json.dump(experiment_log.__dict__, f)
+        json.dump(experiment_log.__dict__, f, indent=4)
 
 
 if __name__ == "__main__":

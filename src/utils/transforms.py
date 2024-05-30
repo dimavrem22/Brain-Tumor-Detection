@@ -1,3 +1,4 @@
+import random
 import torchvision.transforms.functional as TF
 from torchvision import transforms
 from torchvision.ops import box_iou
@@ -7,6 +8,7 @@ from src.utils.bbox import (
     center_to_corners_bbox,
     coco_to_corners_bbox,
     coco_to_center_bbox,
+    rotate_point
 )
 
 
@@ -73,6 +75,29 @@ class BBoxCocoToCornerNotation:
 
         # [x_min, y_min, width, height] -> [x_min, y_min, x_max, y_max]
         return image, np.array([bbox[0], bbox[1], bbox[0] + bbox[2],  bbox[1] + bbox[3]])
+    
+
+class BBoxRotate:
+    """
+    # NOTE: bboxes must be in the format: [x_center, y_center, width, height]
+    """
+
+    def __call__(self, image, bbox):
+        
+        # randomly select rotation angle
+        degrees = random.choice([0, 90, 180, 270])
+
+        # Rotate the image
+        image = TF.rotate(image, degrees)
+
+        # Calculate the new bounding box
+        x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3], 
+        x, y = rotate_point(x, y, image.shape[1]/2,  image.shape[2]/2, -degrees)
+
+        if degrees % 180 != 0:
+            w, h = h, w
+
+        return image, np.array([x, y, w, h])
 
 
 class BBoxAnchorEncode:
@@ -114,3 +139,8 @@ class BBoxAnchorEncode:
         labels = labels.to(torch.float32)
 
         return image, (labels, targets, bbox_center[0])
+
+
+DATA_AUGMENTATION_MAP = {
+    'rotation': BBoxRotate(),
+}
