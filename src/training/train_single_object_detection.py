@@ -131,7 +131,7 @@ def main_train_loop(
         experiment_log.test_iou = test_iou
 
         # plottting visuals of predictions
-        sample_pred_save_dir = configs.save_dir_pathf / "test_samples"
+        sample_pred_save_dir = configs.save_dir_path / "test_samples"
         plot_sample_model_prediction(
             imgs=test_images,
             true_bboxes=test_true_targets,

@@ -19,7 +19,6 @@ def get_latest_commit_id():
 
 def save_configs_dict(configs_dict, save_path, add_git_commit_id=True):
 
-
     configs_dict_copy = configs_dict.copy()
 
     if add_git_commit_id:
