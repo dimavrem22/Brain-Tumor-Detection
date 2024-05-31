@@ -77,7 +77,7 @@ class BBoxCocoToCornerNotation:
         return image, np.array([bbox[0], bbox[1], bbox[0] + bbox[2],  bbox[1] + bbox[3]])
     
 
-class BBoxRotate:
+class BBoxRotation:
     """
     # NOTE: bboxes must be in the format: [x_center, y_center, width, height]
     """
@@ -92,13 +92,66 @@ class BBoxRotate:
 
         # Calculate the new bounding box
         x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3], 
-        x, y = rotate_point(x, y, image.shape[1]/2,  image.shape[2]/2, -degrees)
+        x, y = rotate_point(x, y, image.shape[2]/2,  image.shape[1]/2, -degrees)
 
         if degrees % 180 != 0:
             w, h = h, w
 
         return image, np.array([x, y, w, h])
+    
 
+class BBoxReflection:
+    """
+    # NOTE: bboxes must be in the format: [x_center, y_center, width, height]
+    """
+
+    def __call__(self, image, bbox):
+        
+        # randomly select rotation angle
+        axis = random.choice(['horizontal', 'vertical', None])
+
+        if not axis:
+            return image, bbox
+
+        x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3], 
+        
+        if axis == 'horizontal':
+            image = TF.hflip(image)
+            x = image.shape[2] - x
+
+        if axis == 'vertical':
+            y = image.shape[1] - y
+            image = TF.vflip(image)
+
+        return image, np.array([x, y, w, h])
+
+class BBoxRandomCrop:
+    """
+    # NOTE: bboxes must be in the format: [x_center, y_center, width, height]
+    """
+
+    def __call__(self, image, bbox):
+        
+        # randomizing crop parameters
+        original_size = image.shape
+        max_crop = int(round(original_size[1] * 0.2))
+        crop_size = np.random.randint(0, max_crop)
+
+        if crop_size == 0:
+            return image, bbox
+
+        new_img_size = original_size[1] - crop_size
+        x_shift = np.random.randint(0, crop_size)
+        y_shift = np.random.randint(0, crop_size)
+
+        # adjust image
+        image = image[:, y_shift: y_shift+new_img_size, x_shift: x_shift+new_img_size]
+        image = TF.resize(image, original_size[1], TF.InterpolationMode.BILINEAR)
+
+        # adjusting bbox
+        bbox[0] = (bbox[0] - x_shift) * original_size[1] / new_img_size
+        bbox[1] = (bbox[1] - y_shift) * original_size[1] / new_img_size
+        return image, bbox
 
 class BBoxAnchorEncode:
 
@@ -142,5 +195,7 @@ class BBoxAnchorEncode:
 
 
 DATA_AUGMENTATION_MAP = {
-    'rotation': BBoxRotate(),
+    'rotation': BBoxRotation(),
+    'reflection': BBoxReflection(),
+    'crop': BBoxRandomCrop(),
 }

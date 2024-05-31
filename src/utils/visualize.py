@@ -1,10 +1,13 @@
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
 import random
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+
+from src.utils.bbox import calculate_single_bbox_iou_values
 
 def plot_images_and_bboxes(images: list, true_bboxes: list, pred_bboxes:list = None) -> None:
 
@@ -50,7 +53,12 @@ def plot_images_and_bboxes(images: list, true_bboxes: list, pred_bboxes:list = N
 def plot_sample_model_prediction(imgs, true_bboxes, pred_bboxes, save_dir, n_samples=5):
 
     indices = list(range(len(true_bboxes)))
-    sampled_indices = random.sample(indices, n_samples)
+    ious = calculate_single_bbox_iou_values(true_bboxes, pred_bboxes)
+
+    if n_samples == 'all':
+        sampled_indices = indices
+    else:
+        sampled_indices = random.sample(indices, n_samples)
 
     # Ensure the save directory exists
     if not os.path.exists(save_dir):
@@ -62,9 +70,10 @@ def plot_sample_model_prediction(imgs, true_bboxes, pred_bboxes, save_dir, n_sam
         img = imgs[idx]
         true_bbox = true_bboxes[idx]
         pred_bbox = pred_bboxes[idx]
+        iou = ious[idx]
 
         fig, ax = plt.subplots(1)
-        ax.set_title(f'Sample {i+1}')
+        ax.set_title(f'Sample {i+1} (IoU = {iou})')
 
         # Show the image
         np_img = np.transpose(np.array(img), (1, 2, 0))

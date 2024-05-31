@@ -139,7 +139,7 @@ def main_train_loop(
             true_bboxes=test_true_targets,
             pred_bboxes=test_predicted_targets,
             save_dir=sample_pred_save_dir,
-            n_samples=10,
+            n_samples='all',
         )
 
     return experiment_log
@@ -241,10 +241,10 @@ def main():
     training_config = TrainingConfig(
         batch_size = 16,
         learning_rate = 0.001,
-        num_epochs = 100,
+        num_epochs = 2,
         device = get_device(),
         dataset_root_dir = DATASET_BASE_DIR,
-        augmentations=['rotation'],
+        augmentations=['crop'],
         optimizer = "Adam", 
         image_size = 256, 
         pretrained_backbone = True, 
