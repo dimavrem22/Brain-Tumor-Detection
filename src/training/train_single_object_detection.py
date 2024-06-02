@@ -4,17 +4,15 @@ import pathlib
 from dataclasses import dataclass, field
 from tqdm import tqdm
 import numpy as np
-import os
 import pprint as pp
 import warnings 
 import json
 from datetime import datetime
-from src.data.bbox import BoundingBoxDetectionDataset
+from src.datasets.bbox import BoundingBoxDetectionDataset
 from src.utils.bbox import calculate_single_bbox_iou_values
-from src.data.classification import DataSplit
+from src.datasets.classification import DataSplit
 from src.models.model_utils import load_checkpoint, save_checkpoint
 from src.models.object_detection.efficientnet import EfficientNet
-from src.training.training_utils import get_device
 from src.utils.transforms import (
     BBoxBaseTransform,
     BBoxCompose,
@@ -22,7 +20,7 @@ from src.utils.transforms import (
     BBoxCocoToCenterFormat,
     DATA_AUGMENTATION_MAP
 )
-from src.utils.scipt_utils import save_configs_dict
+from src.utils.scipt_utils import save_configs_dict, get_device
 from src.utils.visualize import plot_sample_model_prediction
 
 
@@ -250,7 +248,6 @@ def main():
         pretrained_backbone = True, 
         efficient_net_version = "b4",
         predictor_hidden_dims = [64, 16],
-        # save_dir_path = EXPERIMENTS_BASE_DIR / 'exp_1',
     )
     
     # creating experiment save directory

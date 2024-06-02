@@ -1,5 +1,5 @@
 from typing import List
-from src.data.bbox import BoundingBoxDetectionDataset
+from src.datasets.bbox import BoundingBoxDetectionDataset
 import torch
 from torch.utils.data import DataLoader
 import pathlib
@@ -7,14 +7,14 @@ from dataclasses import dataclass, field
 from src.models.object_detection.efficientdet import EfficientDet, save_checkpoint
 from src.utils.bbox import calculate_anchor_based_dataset_iou, generate_anchors
 from src.utils.loss_functions import BBoxLoss
-from src.training.training_utils import get_device
+from src.utils.scipt_utils import get_device
 from tqdm import tqdm
 import numpy as np
 import os
 import pprint as pp
 from sklearn.metrics import roc_auc_score
 
-from src.data.classification import DataSplit
+from src.datasets.classification import DataSplit
 from src.utils.transforms import (
     BBoxAnchorEncode,
     BBoxBaseTransform,
@@ -39,9 +39,7 @@ class TrainingConfig:
     optimizer: str = "Adam"
     anchor_aspect_ratios: List[float] = field(default_factory=lambda: [1.0])
     anchor_scales: List[float] = field(default_factory=lambda: [0.1, 0.175, 0.25])
-    anchor_feature_map_sizes: List[int] = field(
-        default_factory=lambda: [32, 16, 8, 4, 2]
-    )
+    anchor_feature_map_sizes: List[int] = field(default_factory=lambda: [32, 16, 8, 4, 2])
     pretrained_backbone: bool = True
     image_size: int = 256
     save_dir_path: str = None

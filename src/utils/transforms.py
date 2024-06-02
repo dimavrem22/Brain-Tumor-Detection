@@ -69,7 +69,7 @@ class BBoxCocoToCenterFormat:
         return image, np.array([bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2, bbox[2], bbox[3]])
 
 
-class BBoxCocoToCornerNotation:
+class BBoxCocoToCornerFormat:
 
     def __call__(self, image, bbox):
 
