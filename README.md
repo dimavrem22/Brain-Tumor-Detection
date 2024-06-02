@@ -2,6 +2,8 @@
 
 This work aims to identify the location of brain tumors in MRI images through the use of object-detection.
 
+These are personal contributions and continuations of a group project for CS4100. You can find the project report [here](./resources/Project_Report.pdf).
+ 
 ## Datasets
 
 The datasets used in this project are available on Kaggle:
