@@ -20,7 +20,7 @@ Benefit: simple and naive approach
 
 Drawbacks: relies on the assumption that there is exactly 1 tumor bounding box per image
 
-![Example Samples](./resources/single-bbox-prediction.png)
+![single-object-formulation](./resources/single-bbox-prediction.png)
 
 
 ### Anchor-based Object Detection
