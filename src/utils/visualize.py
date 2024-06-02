@@ -73,7 +73,7 @@ def plot_sample_model_prediction(imgs, true_bboxes, pred_bboxes, save_dir, n_sam
         iou = ious[idx]
 
         fig, ax = plt.subplots(1)
-        ax.set_title(f'Sample {i+1} (IoU = {iou})')
+        ax.set_title(f'Sample {i+1} (IoU = {float(iou):.3})')
 
         # Show the image
         np_img = np.transpose(np.array(img), (1, 2, 0))

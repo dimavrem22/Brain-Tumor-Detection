@@ -241,10 +241,10 @@ def main():
     training_config = TrainingConfig(
         batch_size = 16,
         learning_rate = 0.001,
-        num_epochs = 2,
+        num_epochs = 100,
         device = get_device(),
         dataset_root_dir = DATASET_BASE_DIR,
-        augmentations=['crop'],
+        augmentations=['rotation', 'reflection', 'crop'],
         optimizer = "Adam", 
         image_size = 256, 
         pretrained_backbone = True, 
