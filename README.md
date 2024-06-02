@@ -8,6 +8,8 @@ The datasets used in this project are available on Kaggle:
 
 - [Brain Tumor Image Dataset: Semantic Segmentation](https://www.kaggle.com/datasets/pkdarabi/brain-tumor-image-dataset-semantic-segmentation)
 
+![Example Samples](./resources/bbox_dataset.png)
+
 ## Problem Formulation
 
 ### Single Object Detection
