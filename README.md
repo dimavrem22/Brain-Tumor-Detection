@@ -16,7 +16,8 @@ The datasets used in this project are available on Kaggle:
 
 Directly predict the coordinates of the ground truth bounding box (center of the box and its width, height).
 
-Benefit: simple and naive approach
+Benefit: simple and naive approach 
+
 Drawbacks: relies on the assumption that there is exactly 1 tumor bounding box per image
 
 ### Anchor-based Object Detection
@@ -24,6 +25,7 @@ Drawbacks: relies on the assumption that there is exactly 1 tumor bounding box p
 Pre-define anchors boxes of various sizes and aspect ratios. For each anchor box, make a classification prediction (is there an object in this anchor?) and a regression prediction (how to make the anchor box overlay the true object bounding box).
 
 Benefits: can handle cases when there are no tumors or many tumors in a single image
+
 Drawbacks: more difficult to train due to spacity of the labels; more complicated model architecture.
 
 ## Setup Instructions
