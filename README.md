@@ -1,14 +1,28 @@
-# Brain Cancer Classifier
+# Brain Tumor Detection with Computer Vision
 
-This work is a personal continuation of CS4100 Final Project.
+This work aims to identify the location of brain tumors in MRI images through the use of object-detection.
 
 ## Datasets
 
 The datasets used in this project are available on Kaggle:
 
 - [Brain Tumor Image Dataset: Semantic Segmentation](https://www.kaggle.com/datasets/pkdarabi/brain-tumor-image-dataset-semantic-segmentation)
-- [Brain Tumor MRI Dataset](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset)
-- [Brain MRI Segmentation Dataset](https://www.kaggle.com/datasets/mateuszbuda/lgg-mri-segmentation)
+
+## Problem Formulation
+
+### Single Object Detection
+
+Directly predict the coordinates of the ground truth bounding box (center of the box and its width, height).
+
+Benefit: simple and naive approach
+Drawbacks: relies on the assumption that there is exactly 1 tumor bounding box per image
+
+### Anchor-based Object Detection
+
+Pre-define anchors boxes of various sizes and aspect ratios. For each anchor box, make a classification prediction (is there an object in this anchor?) and a regression prediction (how to make the anchor box overlay the true object bounding box).
+
+Benefits: can handle cases when there are no tumors or many tumors in a single image
+Drawbacks: more difficult to train due to spacity of the labels; more complicated model architecture.
 
 ## Setup Instructions
 
@@ -24,7 +38,7 @@ Alternatively, you can create a conda environment using the following commands:
 
 ```bash
 conda env create -f environment.yaml
-conda activate ai_project_env
+conda activate brain_tumor_detection_env
 ```
 
 ### Step 2: Setup Environment Variables

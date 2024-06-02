@@ -1,4 +1,4 @@
-name: ai_project_env
+name: brain_tumor_detection_env
 channels:
   - conda-forge
   - pytorch
