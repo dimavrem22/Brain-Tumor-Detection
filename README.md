@@ -61,7 +61,7 @@ Refer to the `notebooks/downloading_datasets.ipynb` notebook for step-by-step in
 
 ## Running Experiments:
 
-### Object Detection
+### Single Object Detection
 
 Navigate to the `main` function in `src.scripts.train_object_detection.py` and edit the `training_configs`.
 To run the specified experiment you can use...
@@ -69,3 +69,7 @@ To run the specified experiment you can use...
 ```bash
 python -m src.scripts.train_object_detection
 ```
+
+### Anchor-Based Object Detection
+
+## Some Experimental Results
