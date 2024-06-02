@@ -20,6 +20,9 @@ Benefit: simple and naive approach
 
 Drawbacks: relies on the assumption that there is exactly 1 tumor bounding box per image
 
+![Example Samples](./resources/single-bbox-prediction.png)
+
+
 ### Anchor-based Object Detection
 
 Pre-define anchors boxes of various sizes and aspect ratios. For each anchor box, make a classification prediction (is there an object in this anchor?) and a regression prediction (how to make the anchor box overlay the true object bounding box).
