@@ -12,6 +12,8 @@ The datasets used in this project are available on Kaggle:
 
 ![Example Samples](./resources/bbox_dataset.png)
 
+Find the data exploration for this dataset [here])(./notebooks/bbox_exploration.ipynb).
+
 ## Problem Formulation
 
 ### Single Object Detection
@@ -87,6 +89,7 @@ TrainingConfig Arguments:
 - pretrained_backbone (True or False)
 - efficient_net_version: ("b0", ... "b7")
 - predictor_hidden_dims (e.g. [[64, 16])
+- augmentations: ("rotation", "reflection", and/or "crop")
 
 To run the specified experiment you can use...
 
