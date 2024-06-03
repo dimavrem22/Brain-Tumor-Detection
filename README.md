@@ -12,7 +12,7 @@ The datasets used in this project are available on Kaggle:
 
 ![Example Samples](./resources/bbox_dataset.png)
 
-Find the data exploration for this dataset [here])(./notebooks/bbox_exploration.ipynb).
+Find the data exploration for this dataset [here](./notebooks/bbox_exploration.ipynb).
 
 ## Problem Formulation
 
