@@ -53,16 +53,6 @@ conda env create -f environment.yaml
 conda activate brain_tumor_detection_env
 ```
 
-### Step 2: Setup Environment Variables
-
-To create a base configuration for the project, run the following command:
-
-```bash
-cp config/env_local.env .env
-```
-
-This will create a `.env` file in the root dir of the project. However, to actually run training and testing scripts, you will need to fill in the values in the `.env` file.
-
 ### Step 3: Kaggle API Authentication
 
 Follow the instructions to set up your Kaggle API credentials. You can find the Kaggle API authentication instructions in the [Kaggle API Documentation](https://www.kaggle.com/docs/api).
