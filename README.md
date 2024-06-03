@@ -74,6 +74,20 @@ Refer to the `notebooks/downloading_datasets.ipynb` notebook for step-by-step in
 ### Single Object Detection
 
 Navigate to the `main` function in [`src.training.train_single_object_detection`](./src/training/train_single_object_detection.py) and edit the `training_configs`.
+
+TrainingConfig Arguments:
+
+- dataset_root_dir
+- device
+- batch_size
+- learning_rate
+- num_epochs
+- optimizer ("Adam" or "SGD")
+- image_size
+- pretrained_backbone (True or False)
+- efficient_net_version: ("b0", ... "b7")
+- predictor_hidden_dims (e.g. [[64, 16])
+
 To run the specified experiment you can use...
 
 ```bash
