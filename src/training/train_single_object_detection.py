@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 from src.datasets.bbox import BoundingBoxDetectionDataset
 from src.utils.bbox import calculate_single_bbox_iou_values
-from src.datasets.classification import DataSplit
+from src.enums import DataSplit
 from src.models.model_utils import load_checkpoint, save_checkpoint
 from src.models.object_detection.efficientnet import EfficientNet
 from src.utils.transforms import (
@@ -29,6 +29,14 @@ warnings.filterwarnings("ignore")
 DATASET_BASE_DIR = pathlib.Path(__file__).parent.parent.parent / "datasets"
 EXPERIMENTS_BASE_DIR = pathlib.Path(__file__).parent.parent.parent / "experiments"
 
+@dataclass
+class ExperimentLog:
+    tr_loss: list = field(default_factory=lambda:[])
+    val_loss: list = field(default_factory=lambda:[])
+    val_iou: list = field(default_factory=lambda:[])
+    test_loss: float = None
+    test_iou: float = None
+
 
 @dataclass
 class TrainingConfig:
@@ -44,14 +52,6 @@ class TrainingConfig:
     efficient_net_version: str = "b0"
     predictor_hidden_dims: list = field(default_factory=lambda:[])
     save_dir_path: str = EXPERIMENTS_BASE_DIR / datetime.now().strftime('%y-%m-%d-%H-%M')
-
-@dataclass
-class ExperimentLog:
-    tr_loss: list = field(default_factory=lambda:[])
-    val_loss: list = field(default_factory=lambda:[])
-    val_iou: list = field(default_factory=lambda:[])
-    test_loss: float = None
-    test_iou: float = None
 
 def main_train_loop(
     model: torch.nn.Module,
@@ -72,6 +72,7 @@ def main_train_loop(
 
     # keeping track of best model
     experiment_log = ExperimentLog()
+
 
     for epoch in range(n_epochs):
         with tqdm(

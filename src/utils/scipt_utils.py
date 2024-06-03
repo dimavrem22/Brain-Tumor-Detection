@@ -1,6 +1,8 @@
 import json
 import subprocess
 import torch
+from dataclasses import dataclass, field
+
 
 def get_device():
     """

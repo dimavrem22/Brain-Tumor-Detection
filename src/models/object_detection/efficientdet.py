@@ -40,8 +40,12 @@ class Classifier(nn.Module):
                 padding=1,
                 stride=1,
             ),
-            # nn.Sigmoid(),
         ]
+
+        if self.n_classes > 1:
+            layers.append(nn.Softmax())
+        else:
+            layers.append(nn.Sigmoid())
 
         self.class_net = nn.Sequential(*layers)
 

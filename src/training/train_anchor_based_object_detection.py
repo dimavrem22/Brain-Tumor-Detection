@@ -4,17 +4,20 @@ import torch
 from torch.utils.data import DataLoader
 import pathlib
 from dataclasses import dataclass, field
+from datetime import datetime
+import warnings
+from src.models.model_utils import load_checkpoint
 from src.models.object_detection.efficientdet import EfficientDet, save_checkpoint
 from src.utils.bbox import calculate_anchor_based_dataset_iou, generate_anchors
 from src.utils.loss_functions import BBoxLoss
-from src.utils.scipt_utils import get_device
+from src.utils.scipt_utils import ExperimentLog, get_device, save_configs_dict
 from tqdm import tqdm
 import numpy as np
-import os
+import json
 import pprint as pp
 from sklearn.metrics import roc_auc_score
 
-from src.datasets.classification import DataSplit
+from src.enums import DataSplit
 from src.utils.transforms import (
     BBoxAnchorEncode,
     BBoxBaseTransform,
@@ -22,11 +25,22 @@ from src.utils.transforms import (
     BBoxResize,
 )
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+warnings.filterwarnings("ignore")
 
 
 DATASET_BASE_DIR = pathlib.Path(__file__).parent.parent.parent / "datasets"
+EXPERIMENTS_BASE_DIR = pathlib.Path(__file__).parent.parent.parent / "experiments"
+
+
+@dataclass
+class ExperimentLog:
+    tr_loss: list = field(default_factory=lambda:[])
+    val_loss: list = field(default_factory=lambda:[])
+    val_iou: list = field(default_factory=lambda:[])
+    val_auc: list = field(default_factory=lambda:[])
+    test_loss: float = None
+    test_iou: float = None
+    test_auc: float = None
 
 
 @dataclass
@@ -42,11 +56,11 @@ class TrainingConfig:
     anchor_feature_map_sizes: List[int] = field(default_factory=lambda: [32, 16, 8, 4, 2])
     pretrained_backbone: bool = True
     image_size: int = 256
-    save_dir_path: str = None
     clasification_loss: str = "weighted_bce"
     clasification_loss_weight: int = 1
     regression_loss: str = "smooth_l1"
     regression_loss_weight: int = 1
+    save_dir_path: str = EXPERIMENTS_BASE_DIR / datetime.now().strftime('%y-%m-%d-%H-%M')
 
 
 def main_train_loop(
@@ -59,16 +73,16 @@ def main_train_loop(
     device: torch.device,
     n_epochs: int,
     configs: TrainingConfig,
+    test_dataloader: DataLoader | None = None,
 ):
     model.to(device)
 
+    # creating paths
+    best_model_path = configs.save_dir_path / "best_model.pt"
+    last_model_path = configs.save_dir_path / "last_model.pt"
+
     # keeping track of best model
-    tr_log = {
-        "tr_loss": [],
-        "val_loss": [],
-        "val_IoU": [],
-        "configs": configs.__dict__,
-    }
+    experiment_log = ExperimentLog()
 
     for epoch in range(n_epochs):
         with tqdm(
@@ -83,29 +97,46 @@ def main_train_loop(
             )
 
             # evaluating performance on validation set
-            val_loss, val_iou = evaluate(
+            val_loss, val_iou, val_auc = evaluate(
                 model, val_dataloader, loss_fn, device, anchors, pbar
             )
 
             # keeping track of metrics
-            tr_log["tr_loss"].append(float(train_loss))
-            tr_log["val_loss"].append(float(val_loss))
-            tr_log["val_IoU"].append(float(val_iou))
+            experiment_log.tr_loss.append(float(train_loss))
+            experiment_log.val_loss.append(float(val_loss))
+            experiment_log.val_iou.append(float(val_iou))
+            experiment_log.val_auc.append(float(val_auc))
+            print(f"Validation metric: IoU = {val_iou}\tAUC = {val_auc}")
 
             # checking if model needs to be saved
-            if max(tr_log["val_IoU"]) == tr_log["val_IoU"][-1]:
-
+            if max(experiment_log.val_iou) == val_iou:
                 print(f"New best val iou.")
-
                 # saving best model if save path is provided
                 if configs.save_dir_path:
-                    save_checkpoint(model, configs.save_dir_path + "/best_model.pt")
+                    save_checkpoint(model, best_model_path)
 
             # saving current model if save path is provided
             if configs.save_dir_path:
-                save_checkpoint(model, configs.save_dir_path + "/last_model.pt")
+                save_checkpoint(model, last_model_path)
 
-    return tr_log
+    if test_dataloader:
+        
+        print("Running Test: ")
+
+        # loading the best model
+        load_checkpoint(model, best_model_path)
+
+        # evaluating performance on test set
+        test_loss, test_iou, test_auc, test_images, test_true_targets, test_predicted_targets = \
+            evaluate(model, test_dataloader, loss_fn, device)
+        
+        print(f"Validation metric: IoU = {test_iou}\tAUC = {test_auc}")
+        experiment_log.test_loss = test_loss
+        experiment_log.test_iou = test_iou
+        experiment_log.test_auc = test_auc
+
+
+    return experiment_log
 
 
 def train_step(
@@ -124,11 +155,11 @@ def train_step(
     cumalative_loss = 0
     optimizer.zero_grad()
 
-    for imgs, (labels, targets, bboxes) in train_dataloader:
+    for imgs_batch, (labels, targets, bboxes) in train_dataloader:
 
-        imgs, labels, targets = imgs.to(device), labels.to(device), targets.to(device)
+        imgs_batch, labels, targets = imgs_batch.to(device), labels.to(device), targets.to(device)
         model.zero_grad()
-        y_hat_labels, y_hat_targets = model(imgs)
+        y_hat_labels, y_hat_targets = model(imgs_batch)
         y_hat_labels = y_hat_labels.view(y_hat_labels.shape[0], -1)
 
         optimizer.zero_grad()
@@ -157,32 +188,30 @@ def evaluate(
     Evaluate model performance on evaluation data.
     """
 
+    images = []
     scores = []
     true_labels = []
-    adjustments = []
+    pred_bboxes = []
     bboxes = []
 
     model.eval()
     with torch.no_grad():
         cumalative_loss = 0
-        for imgs, (labels, targets, true_bboxes) in eval_dataloader:
-            imgs, labels, targets = (
-                imgs.to(device),
-                labels.to(device),
-                targets.to(device),
+        for imgs_batch, (labels_batch, targets_batch, true_bboxes) in eval_dataloader:
+            imgs_batch, labels_batch, targets_batch = (
+                imgs_batch.to(device),
+                labels_batch.to(device),
+                targets_batch.to(device),
             )
-            y_hat_labels_batch, y_hat_targets_batch = model(imgs)
-            y_hat_labels_batch = y_hat_labels_batch.view(
-                y_hat_labels_batch.shape[0], -1
+            pred_labels_batch, pred_targets_batch = model(imgs_batch)
+            pred_labels_batch = pred_labels_batch.view(
+                pred_labels_batch.shape[0], -1
             )
-            loss = loss_fn(y_hat_labels_batch, y_hat_targets_batch, labels, targets)
+            loss = loss_fn(pred_labels_batch, pred_targets_batch, labels_batch, targets_batch)
             cumalative_loss += loss.item()
 
             pbar.set_postfix({"Loss": f"{loss.item():.4f}", "Phase": "Evaluate"})
             pbar.update()
-
-            # keeping track of predictions
-            bboxes += true_bboxes.to("cpu").tolist()
 
             # using regression outputs to get final bbox prediction
             if use_regression_output:
@@ -193,11 +222,15 @@ def evaluate(
             # anchor is final bbox prediction (used while regressor is not bing trained)
             else:
                 adjustments += (
-                    torch.zeros(y_hat_targets_batch.shape) + anchors
+                    torch.zeros(pred_targets_batch.shape) + anchors
                 ).tolist()
 
-            scores += y_hat_labels_batch.to("cpu").tolist()
-            true_labels += labels.to("cpu").tolist()
+            # keeping track of ground truths and predictions
+            bboxes += true_bboxes.to("cpu").tolist()
+            images += imgs_batch.to("cpu").tolist()
+            pred_bboxes += pred_targets_batch.to("cpu").tolist()
+            scores += pred_labels_batch.to("cpu").tolist()
+            true_labels += labels_batch.to("cpu").tolist()
 
     # calculating metrics (IoU and AUC)
     avg_iou = calculate_anchor_based_dataset_iou(
@@ -206,13 +239,10 @@ def evaluate(
         scores=scores,
     )
     auc = roc_auc_score(
-        np.reshape(np.array(true_labels), -1), sigmoid(np.reshape(np.array(scores), -1))
+        np.reshape(np.array(true_labels), -1), np.reshape(np.array(scores), -1)
     )
 
-    print("AVG IOU: ", avg_iou)
-    print("AUC: ", auc)
-
-    return cumalative_loss / len(eval_dataloader), avg_iou
+    return cumalative_loss / len(eval_dataloader), avg_iou, auc, 
 
 
 def main():
@@ -238,13 +268,11 @@ def main():
         save_dir_path=None,
     )
 
-    if training_config.save_dir_path is not None and not os.path.exists(
-        training_config.save_dir_path
-    ):
-        os.makedirs(training_config.save_dir_path)
-        print(f"Directory '{training_config.save_dir_path}' was created.")
+    # creating experiment save directory
+    training_config.save_dir_path.mkdir(parents=True, exist_ok=True)
 
     pp.pprint(training_config.__dict__)
+    save_configs_dict(training_config.__dict__, save_path=training_config.save_dir_path / "configs.json")
 
     device = training_config.device
 
@@ -257,7 +285,16 @@ def main():
     )
 
     # input transforms
-    transform = BBoxCompose(
+    train_transform = BBoxCompose(
+        [
+            BBoxBaseTransform(),
+            BBoxResize((training_config.image_size, training_config.image_size)),
+            BBoxAnchorEncode(
+                anchors_centers, positive_iou_threshold=0.5, min_positive_iou=0.3
+            ),
+        ]
+    )
+    eval_transform = BBoxCompose(
         [
             BBoxBaseTransform(),
             BBoxResize((training_config.image_size, training_config.image_size)),
@@ -269,10 +306,13 @@ def main():
 
     # initializing datasets
     tr_dataset = BoundingBoxDetectionDataset(
-        root_dir=DATASET_BASE_DIR, split=DataSplit.TRAIN, transform=transform
+        root_dir=DATASET_BASE_DIR, split=DataSplit.TRAIN, transform=train_transform
     )
     val_dataset = BoundingBoxDetectionDataset(
-        root_dir=DATASET_BASE_DIR, split=DataSplit.VALIDATION, transform=transform
+        root_dir=DATASET_BASE_DIR, split=DataSplit.VALIDATION, transform=eval_transform
+    )
+    test_dataset = BoundingBoxDetectionDataset(
+        root_dir=DATASET_BASE_DIR, split=DataSplit.TEST, transform=eval_transform
     )
 
     # initializing data loaders
@@ -282,6 +322,10 @@ def main():
     val_data_loader = DataLoader(
         val_dataset, batch_size=training_config.batch_size, shuffle=True, num_workers=0
     )
+    test_data_loader = DataLoader(
+        test_dataset, batch_size=training_config.batch_size, shuffle=True, num_workers=0
+    )
+    
 
     # initializing model
     model = EfficientDet(
@@ -316,10 +360,11 @@ def main():
         raise ValueError(f"Invalid optimizer: {training_config.optimizer}")
 
     # Train Model
-    tr_log = main_train_loop(
+    experiment_log = main_train_loop(
         model=model,
         train_dataloader=tr_data_loader,
         val_dataloader=val_data_loader,
+        test_dataloader=test_data_loader,
         optimizer=optimizer,
         loss_fn=loss,
         device=device,
@@ -328,7 +373,10 @@ def main():
         configs=training_config,
     )
 
-    print(tr_log)
+    # saving experiment logs
+    pp.pprint(experiment_log.__dict__)
+    with open(training_config.save_dir_path / "experiment_log.json", "w") as f:
+        json.dump(experiment_log.__dict__, f, indent=4)
 
 
 if __name__ == "__main__":
