@@ -3,7 +3,7 @@
 This work aims to identify the location of brain tumors in MRI images through the use of object-detection.
 
 These are personal contributions and continuations of a group project for CS4100. You can find the project report [here](./resources/Project_Report.pdf).
- 
+
 ## Datasets
 
 The datasets used in this project are available on Kaggle:
@@ -100,35 +100,35 @@ python -m src.training.train_single_object_detection
 
 ### Single Object Detection
 
-Experimental Configs: 
+Experimental Configs:
+
 ```json
 {
-    "batch_size": 16,
-    "learning_rate": 0.001,
-    "num_epochs": 100,
-    "device": "mps",
-    "dataset_root_dir": "./datasets",
-    "augmentations": ["rotation", "reflection", "crop"],
-    "optimizer": "Adam",
-    "image_size": 256,
-    "pretrained_backbone": true,
-    "efficient_net_version": "b4",
-    "predictor_hidden_dims": [64, 16],
-    "save_dir_path": "./experiments/24-05-31-01-09",
-    "git commit id": "ff97464a381f489a97e7730756a276446a4a03ac"
+  "batch_size": 16,
+  "learning_rate": 0.001,
+  "num_epochs": 100,
+  "device": "mps",
+  "dataset_root_dir": "./datasets",
+  "augmentations": ["rotation", "reflection", "crop"],
+  "optimizer": "Adam",
+  "image_size": 256,
+  "pretrained_backbone": true,
+  "efficient_net_version": "b4",
+  "predictor_hidden_dims": [64, 16],
+  "save_dir_path": "./experiments/24-05-31-01-09",
+  "git commit id": "ff97464a381f489a97e7730756a276446a4a03ac"
 }
 ```
 
-Experimental Results: 
+Experimental Results:
+
 ```json
 {
-    "best_val_iou": 0.6572,
-    "best_epoch": 67,
-    "test_iou": 0.6420,
+  "best_val_iou": 0.6572,
+  "best_epoch": 67,
+  "test_iou": 0.642
 }
 ```
 
 Example Test Predictions:
-
-
-
+<img src="./resources/single_object_detection_samples/sample_2.png" alt="First Image" width="400"/> <img src="./resources/single_object_detection_samples/sample_2.png" alt="Second Image" width="400"/>
