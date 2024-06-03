@@ -126,7 +126,7 @@ Experimental Results:
 {
   "best_val_iou": 0.6572,
   "best_epoch": 67,
-  "test_iou": 0.642
+  "test_iou": 0.6420
 }
 ```
 
