@@ -133,4 +133,10 @@ Experimental Results:
 Example Test Predictions:
 
 
-<img src="./resources/single_object_detection_samples/sample_2.png" alt="First Image" width="500"/> <img src="./resources/single_object_detection_samples/sample_2.png" alt="Second Image" width="500"/>
+<img src="./resources/single_object_detection_samples/sample_2.png" alt="First Image" width="500"/> <img src="./resources/single_object_detection_samples/sample_25.png" alt="Second Image" width="500"/>
+
+<img src="./resources/single_object_detection_samples/sample_104.png" alt="First Image" width="500"/> <img src="./resources/single_object_detection_samples/sample_160.png" alt="Second Image" width="500"/>
+
+<img src="./resources/single_object_detection_samples/sample_186.png" alt="First Image" width="500"/> <img src="./resources/single_object_detection_samples/sample_202.png" alt="Second Image" width="500"/>
+
+
