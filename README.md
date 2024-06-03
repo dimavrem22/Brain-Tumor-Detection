@@ -133,4 +133,4 @@ Experimental Results:
 Example Test Predictions:
 
 
-<img src="./resources/single_object_detection_samples/sample_2.png" alt="First Image" width="400"/> <img src="./resources/single_object_detection_samples/sample_2.png" alt="Second Image" width="400"/>
+<img src="./resources/single_object_detection_samples/sample_2.png" alt="First Image" width="800"/> <img src="./resources/single_object_detection_samples/sample_2.png" alt="Second Image" width="800"/>
