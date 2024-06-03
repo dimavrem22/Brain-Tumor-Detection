@@ -73,11 +73,11 @@ Refer to the `notebooks/downloading_datasets.ipynb` notebook for step-by-step in
 
 ### Single Object Detection
 
-Navigate to the `main` function in `src.scripts.train_object_detection.py` and edit the `training_configs`.
+Navigate to the `main` function in [`src.training.train_single_object_detection`](./src/training/train_single_object_detection.py) and edit the `training_configs`.
 To run the specified experiment you can use...
 
 ```bash
-python -m src.scripts.train_object_detection
+python -m src.training.train_single_object_detection
 ```
 
 ### Anchor-Based Object Detection
