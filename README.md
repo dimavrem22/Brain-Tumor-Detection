@@ -97,3 +97,25 @@ python -m src.training.train_single_object_detection
 ### Anchor-Based Object Detection
 
 ## Some Experimental Results
+
+### Single Object Detection
+
+Experimental Configs: 
+```json
+{
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "num_epochs": 100,
+    "device": "mps",
+    "dataset_root_dir": "./datasets",
+    "augmentations": ["rotation", "reflection", "crop"],
+    "optimizer": "Adam",
+    "image_size": 256,
+    "pretrained_backbone": true,
+    "efficient_net_version": "b4",
+    "predictor_hidden_dims": [64, 16],
+    "save_dir_path": "./experiments/24-05-31-01-09",
+    "git commit id": "ff97464a381f489a97e7730756a276446a4a03ac"
+}
+```
+
