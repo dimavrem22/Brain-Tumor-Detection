@@ -59,7 +59,7 @@ Follow the instructions to set up your Kaggle API credentials. You can find the 
 
 ### Step 4: Download Datasets
 
-Refer to the `notebooks/downloading_datasets.ipynb` notebook for step-by-step instructions on using the Kaggle API to download the datasets required for this project. The datasets will be downloaded to the `./datasets` folder, which is configured to be ignored by git.
+Refer to the `[notebooks/downloading_datasets.ipynb](./notebooks/downloading_datasets.ipynb)` notebook for step-by-step instructions on using the Kaggle API to download the datasets required for this project. The datasets will be downloaded to the `./datasets` folder, which is configured to be ignored by git.
 
 ## Running Experiments:
 
